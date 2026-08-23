@@ -4,7 +4,7 @@ Empty folders, one per module from the brief (§32), so each phase has a fixed p
 
 | Module | Lands in |
 |---|---|
-| auth, users, businesses | Phase 1 |
+| auth, users, businesses | Phase 1 (done) |
 | customers, orders | Phase 2 |
 | products, catalog | Phase 3 |
 | calculator | Phase 4–5 |

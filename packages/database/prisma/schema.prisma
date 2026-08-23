@@ -38,9 +38,26 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  memberships BusinessMember[]
+  memberships   BusinessMember[]
+  refreshTokens RefreshToken[]
 
   @@map("users")
+}
+
+// Refresh tokens are stored server-side (hashed) so logout / revocation is
+// real, not just "client forgets the JWT". Rotated on every use.
+model RefreshToken {
+  id         String    @id @default(cuid())
+  userId     String
+  tokenHash  String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
 }
 
 enum BusinessMemberStatus {
@@ -134,4 +151,25 @@ model Location {
 
   @@index([businessId])
   @@map("locations")
+}
+
+// ---------- Audit ----------
+
+// Written (not yet browsable — that's Phase 11/Reports) on sensitive
+// operations: login, register, role/status changes. businessId/actorUserId
+// are nullable because a failed login before a business is resolved (or a
+// register attempt) still needs to be logged.
+model AuditLog {
+  id           String   @id @default(cuid())
+  businessId   String?
+  actorUserId  String?
+  action       String
+  targetType   String
+  targetId     String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  @@index([businessId])
+  @@index([actorUserId])
+  @@map("audit_logs")
 }

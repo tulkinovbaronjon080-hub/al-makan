@@ -7,16 +7,23 @@
   "scripts": {
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
+    "seed": "ts-node prisma/seed.ts",
     "studio": "prisma studio",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "dependencies": {
+    "@al-makan/types": "workspace:*",
     "@prisma/client": "^6.1.0"
   },
   "devDependencies": {
     "@al-makan/config": "workspace:*",
+    "@types/node": "^22.10.2",
     "prisma": "^6.1.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
   }
 }
