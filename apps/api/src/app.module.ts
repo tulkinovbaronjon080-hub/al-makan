@@ -8,13 +8,15 @@ import { AuditModule } from "./audit/audit.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { BusinessesModule } from "./modules/businesses/businesses.module";
 import { UsersModule } from "./modules/users/users.module";
+import { CustomersModule } from "./modules/customers/customers.module";
+import { OrdersModule } from "./modules/orders/orders.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "./common/guards/permissions.guard";
 import { validateEnv } from "./config/env.schema";
 
-// Domain modules (customers, orders, inventory, ...) register here
-// starting Phase 2, one at a time, per the roadmap — folders already
-// exist under src/modules/ (see src/modules/README.md).
+// Domain modules (inventory, production, ...) register here starting
+// Phase 3+, one at a time, per the roadmap — folders already exist under
+// src/modules/ (see src/modules/README.md).
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
@@ -25,6 +27,8 @@ import { validateEnv } from "./config/env.schema";
     AuthModule,
     BusinessesModule,
     UsersModule,
+    CustomersModule,
+    OrdersModule,
   ],
   providers: [
     // JwtAuthGuard first (authenticates → sets request.user), then

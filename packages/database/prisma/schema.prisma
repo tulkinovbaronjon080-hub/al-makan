@@ -16,15 +16,20 @@ datasource db {
 // ---------- Tenancy / Identity ----------
 
 model Business {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  // Per-business order numbering — assigned via an atomic increment inside
+  // OrdersService, never computed with max()+1 (race-prone under concurrency).
+  nextOrderNumber Int      @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   members   BusinessMember[]
   roles     Role[]
   locations Location[]
+  customers Customer[]
+  orders    Order[]
 
   @@map("businesses")
 }
@@ -38,8 +43,9 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  memberships   BusinessMember[]
-  refreshTokens RefreshToken[]
+  memberships        BusinessMember[]
+  refreshTokens      RefreshToken[]
+  orderStatusChanges OrderStatusHistory[]
 
   @@map("users")
 }
@@ -151,6 +157,79 @@ model Location {
 
   @@index([businessId])
   @@map("locations")
+}
+
+// ---------- Customers / Orders ----------
+
+model Customer {
+  id         String   @id @default(cuid())
+  businessId String
+  fullName   String
+  phone      String
+  address    String?
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orders   Order[]
+
+  @@unique([businessId, phone])
+  @@index([businessId])
+  @@map("customers")
+}
+
+enum OrderStatus {
+  NEW
+  MEASUREMENT
+  CALCULATED
+  CONFIRMED
+  PRODUCTION
+  READY
+  INSTALLATION
+  COMPLETED
+  CANCELLED
+}
+
+// Header-only this phase — no products/pricing until the catalog (Phase 3),
+// configurator (Phase 4), and calculation engine (Phase 5) exist to attach
+// OrderItems. See the Phase 2 plan for why a state machine isn't enforced yet.
+model Order {
+  id          String      @id @default(cuid())
+  businessId  String
+  orderNumber Int
+  customerId  String
+  status      OrderStatus @default(NEW)
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  business      Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer      Customer             @relation(fields: [customerId], references: [id])
+  statusHistory OrderStatusHistory[]
+
+  @@unique([businessId, orderNumber])
+  @@index([businessId])
+  @@index([customerId])
+  @@map("orders")
+}
+
+// User-facing status timeline for the Order Detail screen — distinct from
+// AuditLog, which stays reserved for the identity/security events Phase 1
+// established. Every status change (including the initial NEW) appends a row.
+model OrderStatusHistory {
+  id              String      @id @default(cuid())
+  orderId         String
+  status          OrderStatus
+  changedByUserId String?
+  note            String?
+  createdAt       DateTime    @default(now())
+
+  order         Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changedByUser User? @relation(fields: [changedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@map("order_status_history")
 }
 
 // ---------- Audit ----------
