@@ -1,0 +1,16 @@
+{
+  "nav": {
+    "home": "Bosh sahifa",
+    "orders": "Buyurtmalar",
+    "create": "Yaratish",
+    "inventory": "Ombor",
+    "more": "Ko'proq"
+  },
+  "dashboard": {
+    "title": "Bugun",
+    "orders": "Buyurtmalar",
+    "production": "Ishlab chiqarishda",
+    "ready": "Tayyor",
+    "sales": "Savdo"
+  }
+}

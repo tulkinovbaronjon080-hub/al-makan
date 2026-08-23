@@ -1,0 +1,137 @@
+// Al-Makan — Phase 0 schema scope.
+// Only tenancy/identity + location primitives ship now. Orders, catalog,
+// inventory movements, production, POS, finance, etc. are added module by
+// module starting Phase 1+ (see /packages/database/README.md).
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Tenancy / Identity ----------
+
+model Business {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members   BusinessMember[]
+  roles     Role[]
+  locations Location[]
+
+  @@map("businesses")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  phone        String?  @unique
+  passwordHash String
+  fullName     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships BusinessMember[]
+
+  @@map("users")
+}
+
+enum BusinessMemberStatus {
+  ACTIVE
+  INVITED
+  DISABLED
+}
+
+// Join table: a user can belong to multiple businesses, each membership
+// carrying its own role. v1 UI only ever surfaces one "active business" at
+// a time, but the schema supports more without a later migration.
+model BusinessMember {
+  id         String                @id @default(cuid())
+  businessId String
+  userId     String
+  roleId     String
+  status     BusinessMemberStatus  @default(ACTIVE)
+  joinedAt   DateTime              @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     Role     @relation(fields: [roleId], references: [id])
+
+  @@unique([businessId, userId])
+  @@index([userId])
+  @@map("business_members")
+}
+
+// Seeded system roles (OWNER, ADMIN, MANAGER, SALES, MEASUREMENT,
+// PRODUCTION, WAREHOUSE, STORE_CASHIER, INSTALLER) have businessId = null
+// and isSystem = true. A business can later define custom roles scoped to
+// itself (businessId set, isSystem = false).
+model Role {
+  id         String   @id @default(cuid())
+  businessId String?
+  name       String
+  isSystem   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  business    Business?        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+  members     BusinessMember[]
+
+  @@unique([businessId, name])
+  @@map("roles")
+}
+
+// Granular permission keys, e.g. "inventory.view", "orders.create".
+model Permission {
+  id          String @id @default(cuid())
+  key         String @unique
+  description String
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ---------- Locations (inventory foundation) ----------
+
+enum LocationType {
+  WAREHOUSE
+  STORE
+  SHOWROOM
+  FACTORY
+  OTHER
+}
+
+model Location {
+  id         String       @id @default(cuid())
+  businessId String
+  name       String
+  type       LocationType
+  address    String?
+  isActive   Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("locations")
+}

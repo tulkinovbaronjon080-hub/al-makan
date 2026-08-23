@@ -1,0 +1,71 @@
+/**
+ * Al-Makan design tokens — industrial/professional palette.
+ * HSL triplets (no `hsl()` wrapper) so Tailwind can compose them with
+ * opacity modifiers, e.g. `bg-primary/10`.
+ */
+
+:root {
+  /* neutrals — graphite/ink, not pure gray */
+  --background: 210 20% 99%;
+  --foreground: 222 20% 12%;
+
+  --surface: 0 0% 100%;
+  --surface-foreground: 222 20% 12%;
+
+  --muted: 210 16% 95%;
+  --muted-foreground: 215 14% 42%;
+
+  --border: 214 15% 88%;
+  --input: 214 15% 88%;
+  --ring: 217 91% 40%;
+
+  /* primary — steel blue: confident, not decorative */
+  --primary: 217 91% 40%;
+  --primary-foreground: 0 0% 100%;
+
+  /* secondary — near-neutral for low-emphasis actions */
+  --secondary: 214 20% 94%;
+  --secondary-foreground: 222 20% 16%;
+
+  /* semantic status */
+  --success: 152 60% 32%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 40%;
+  --warning-foreground: 0 0% 100%;
+  --danger: 359 72% 45%;
+  --danger-foreground: 0 0% 100%;
+  --info: 205 90% 42%;
+  --info-foreground: 0 0% 100%;
+
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 222 22% 8%;
+  --foreground: 210 20% 96%;
+
+  --surface: 222 20% 11%;
+  --surface-foreground: 210 20% 96%;
+
+  --muted: 222 16% 16%;
+  --muted-foreground: 215 12% 65%;
+
+  --border: 222 14% 20%;
+  --input: 222 14% 20%;
+  --ring: 217 91% 60%;
+
+  --primary: 217 91% 60%;
+  --primary-foreground: 222 20% 10%;
+
+  --secondary: 222 16% 18%;
+  --secondary-foreground: 210 20% 96%;
+
+  --success: 152 55% 42%;
+  --success-foreground: 222 20% 10%;
+  --warning: 38 92% 55%;
+  --warning-foreground: 222 20% 10%;
+  --danger: 359 72% 58%;
+  --danger-foreground: 222 20% 10%;
+  --info: 205 90% 58%;
+  --info-foreground: 222 20% 10%;
+}

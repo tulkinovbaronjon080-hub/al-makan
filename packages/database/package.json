@@ -1,0 +1,22 @@
+{
+  "name": "@al-makan/database",
+  "private": true,
+  "version": "0.0.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "studio": "prisma studio",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.1.0"
+  },
+  "devDependencies": {
+    "@al-makan/config": "workspace:*",
+    "prisma": "^6.1.0",
+    "typescript": "^5.7.2"
+  }
+}

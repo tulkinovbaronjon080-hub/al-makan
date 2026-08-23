@@ -1,0 +1,23 @@
+{
+  "name": "al-makan",
+  "private": true,
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.6.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:generate": "pnpm --filter @al-makan/database prisma generate",
+    "db:migrate": "pnpm --filter @al-makan/database prisma migrate dev",
+    "db:studio": "pnpm --filter @al-makan/database prisma studio"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  }
+}
