@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
+  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wide",
   {
     variants: {
       variant: {
@@ -60,6 +60,7 @@ const orderStatusVariant: Record<OrderStatus, BadgeProps["variant"]> = {
 export function StatusBadge({ status, className }: { status: OrderStatus; className?: string }) {
   return (
     <Badge variant={orderStatusVariant[status]} className={className}>
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
       {status}
     </Badge>
   );

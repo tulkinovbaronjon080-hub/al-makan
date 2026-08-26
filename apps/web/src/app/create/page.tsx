@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Search } from "lucide-react";
+import { ArrowLeft, Plus, Search } from "lucide-react";
 import {
   createCustomerSchema,
   type CreateCustomerDto,
   type CustomerDto,
   type OrderDto,
 } from "@al-makan/types";
-import { Button, Card, CardContent, Input } from "@al-makan/ui";
+import { Button, Card, Input, cn } from "@al-makan/ui";
 import { api, ApiError } from "@/lib/api/client";
 import type { Paginated } from "@/lib/api/types";
 
@@ -68,51 +68,79 @@ export default function CreateOrderPage() {
     }
   }
 
-  if (!customer) {
-    return (
-      <div className="mx-auto max-w-sm space-y-4 p-4">
-        <h1 className="text-xl font-semibold">New order — select customer</h1>
+  const step = customer ? 2 : 1;
 
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by name or phone"
-            className="pl-9"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+  return (
+    <div className="mx-auto flex max-w-sm flex-col p-4 md:p-6">
+      <div className="mb-5 flex items-center gap-3">
+        <button
+          onClick={() => (customer ? setCustomer(null) : router.back())}
+          aria-label="Back"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-surface"
+        >
+          <ArrowLeft className="h-[17px] w-[17px]" strokeWidth={2} />
+        </button>
+        <h1 className="text-[17px] font-bold tracking-tight">New order</h1>
+      </div>
 
-        {results && results.items.length > 0 && (
-          <div className="space-y-2">
-            {results.items.map((c) => (
-              <Card
-                key={c.id}
-                className="cursor-pointer transition-colors hover:bg-muted/50"
-                onClick={() => setCustomer(c)}
-              >
-                <CardContent className="py-3">
-                  <p className="font-medium">{c.fullName}</p>
-                  <p className="text-sm text-muted-foreground">{c.phone}</p>
-                </CardContent>
-              </Card>
-            ))}
+      <div className="mb-1.5 flex gap-1.5">
+        <div className="h-1 flex-1 rounded-full bg-primary" />
+        <div className={cn("h-1 flex-1 rounded-full", step === 2 ? "bg-primary" : "bg-border")} />
+      </div>
+      <div className="mb-6 flex justify-between text-[11px] font-semibold text-muted-foreground">
+        <span className={step === 1 ? "text-primary" : undefined}>1 &middot; Customer</span>
+        <span className={step === 2 ? "text-primary" : undefined}>2 &middot; Details</span>
+      </div>
+
+      {step === 1 ? (
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or phone"
+              className="pl-10"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoFocus
+            />
           </div>
-        )}
-        {search.length > 0 && results && results.items.length === 0 && !showQuickAdd && (
-          <p className="text-sm text-muted-foreground">No matching customers.</p>
-        )}
 
-        {!showQuickAdd ? (
-          <Button variant="outline" className="w-full" onClick={() => setShowQuickAdd(true)}>
-            + Add new customer
-          </Button>
-        ) : (
-          <Card>
-            <CardContent className="space-y-3 pt-4">
+          {results && results.items.length > 0 && (
+            <div className="space-y-2">
+              {results.items.map((c) => (
+                <Card
+                  key={c.id}
+                  className="flex cursor-pointer items-center gap-3 border border-border/70 p-3.5 transition-colors hover:bg-muted/50"
+                  onClick={() => setCustomer(c)}
+                >
+                  <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-bold text-surface-foreground/80">
+                    {getInitials(c.fullName)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13.5px] font-semibold">{c.fullName}</p>
+                    <p className="text-[11.5px] text-muted-foreground">{c.phone}</p>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+          {search.length > 0 && results && results.items.length === 0 && !showQuickAdd && (
+            <p className="text-sm text-muted-foreground">No matching customers.</p>
+          )}
+
+          {!showQuickAdd ? (
+            <button
+              onClick={() => setShowQuickAdd(true)}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border-[1.5px] border-dashed border-border text-[13.5px] font-semibold text-surface-foreground/80"
+            >
+              <Plus className="h-4 w-4" strokeWidth={2} />
+              Add new customer
+            </button>
+          ) : (
+            <Card className="border border-border/70 p-4">
               <form onSubmit={handleCustomerSubmit(onQuickAddCustomer)} className="space-y-3" noValidate>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium" htmlFor="fullName">
+                <div className="space-y-1.5">
+                  <label className="text-[12.5px] font-semibold" htmlFor="fullName">
                     Full name
                   </label>
                   <Input id="fullName" {...registerCustomer("fullName")} />
@@ -120,8 +148,8 @@ export default function CreateOrderPage() {
                     <p className="text-sm text-danger">{customerErrors.fullName.message}</p>
                   )}
                 </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium" htmlFor="phone">
+                <div className="space-y-1.5">
+                  <label className="text-[12.5px] font-semibold" htmlFor="phone">
                     Phone
                   </label>
                   <Input id="phone" type="tel" inputMode="tel" {...registerCustomer("phone")} />
@@ -132,39 +160,51 @@ export default function CreateOrderPage() {
                   {isCreatingCustomer ? "Saving..." : "Save and continue"}
                 </Button>
               </form>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    );
-  }
+            </Card>
+          )}
+        </div>
+      ) : (
+        customer && (
+          <div className="space-y-4">
+            <Card className="flex items-center gap-3 border border-border/70 p-3.5">
+              <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
+                {getInitials(customer.fullName)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13.5px] font-semibold">{customer.fullName}</p>
+                <p className="text-[11.5px] text-muted-foreground">{customer.phone}</p>
+              </div>
+              <button
+                className="text-[12px] font-semibold text-primary"
+                onClick={() => setCustomer(null)}
+              >
+                Change
+              </button>
+            </Card>
 
-  return (
-    <div className="mx-auto max-w-sm space-y-4 p-4">
-      <h1 className="text-xl font-semibold">New order</h1>
+            <div className="space-y-1.5">
+              <label className="text-[12.5px] font-semibold" htmlFor="notes">
+                Notes (optional)
+              </label>
+              <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
 
-      <Card>
-        <CardContent className="space-y-1 pt-4">
-          <p className="text-sm text-muted-foreground">Customer</p>
-          <p className="font-medium">{customer.fullName}</p>
-          <p className="text-sm text-muted-foreground">{customer.phone}</p>
-          <button className="text-sm text-primary underline" onClick={() => setCustomer(null)}>
-            Change customer
-          </button>
-        </CardContent>
-      </Card>
-
-      <div className="space-y-1">
-        <label className="text-sm font-medium" htmlFor="notes">
-          Notes (optional)
-        </label>
-        <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
-      </div>
-
-      {error && <p className="text-sm text-danger">{error}</p>}
-      <Button className="w-full" onClick={onCreateOrder} disabled={createOrder.isPending}>
-        {createOrder.isPending ? "Creating..." : "Create order"}
-      </Button>
+            {error && <p className="text-sm text-danger">{error}</p>}
+            <Button className="w-full" onClick={onCreateOrder} disabled={createOrder.isPending}>
+              {createOrder.isPending ? "Creating..." : "Create order"}
+            </Button>
+          </div>
+        )
+      )}
     </div>
   );
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
 }

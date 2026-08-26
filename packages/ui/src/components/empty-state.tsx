@@ -12,14 +12,14 @@ export function EmptyState({ title, description, icon, action, className, ...pro
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-8 text-center",
+        "flex flex-col items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-border/80 bg-muted/30 p-10 text-center",
         className,
       )}
       {...props}
     >
       {icon}
-      <p className="text-sm font-medium text-surface-foreground">{title}</p>
-      {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+      <p className="text-[13.5px] font-bold text-surface-foreground">{title}</p>
+      {description ? <p className="max-w-[240px] text-[12.5px] text-muted-foreground">{description}</p> : null}
       {action}
     </div>
   );

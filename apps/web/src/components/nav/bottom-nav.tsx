@@ -19,17 +19,17 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-stretch border-t border-border bg-surface md:hidden"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      className="fixed inset-x-0 bottom-0 z-40 flex h-[76px] items-stretch border-t border-border bg-surface pb-2.5 md:hidden"
+      style={{ paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom))" }}
     >
       <NavLink item={home} active={pathname === home.href} />
       <NavLink item={orders} active={pathname.startsWith(orders.href)} />
 
-      <div className="flex flex-1 items-center justify-center">
+      <div className="flex flex-1 items-start justify-center">
         <Link
           href="/create"
           aria-label={dict.nav.create}
-          className="flex h-touch w-touch items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md active:scale-95"
+          className="-mt-[22px] flex h-[52px] w-[52px] items-center justify-center rounded-2xl border-[3px] border-surface bg-primary text-primary-foreground shadow-[0_10px_20px_-4px_hsl(var(--primary)/0.55)] transition-transform active:scale-95"
         >
           <Plus className="h-6 w-6" />
         </Link>
@@ -55,11 +55,11 @@ function NavLink({
     <Link
       href={item.href}
       className={cn(
-        "flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium",
+        "flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-semibold tracking-wide",
         active ? "text-primary" : "text-muted-foreground",
       )}
     >
-      <Icon className="h-5 w-5" />
+      <Icon className="h-[22px] w-[22px]" strokeWidth={1.75} />
       {label}
     </Link>
   );

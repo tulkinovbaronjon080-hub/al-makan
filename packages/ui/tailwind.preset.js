@@ -57,6 +57,10 @@ module.exports = {
       spacing: {
         touch: "2.75rem" /* 44px minimum touch target */,
       },
+      fontFamily: {
+        sans: ["var(--font-sans)", "system-ui", "-apple-system", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
+      },
     },
   },
   plugins: [],

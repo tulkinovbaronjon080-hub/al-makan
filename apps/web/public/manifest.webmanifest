@@ -4,8 +4,8 @@
   "description": "Business operating system for window & door manufacturers",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0f1a",
-  "theme_color": "#0a3fcc",
+  "background_color": "#14181f",
+  "theme_color": "#0950c3",
   "orientation": "portrait-primary",
   "icons": [
     { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
