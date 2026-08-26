@@ -1,4 +1,5 @@
-import { ClipboardList, LayoutDashboard, Package, MoreHorizontal, Users } from "lucide-react";
+import { ClipboardList, LayoutDashboard, Package, MoreHorizontal, Settings, Users } from "lucide-react";
+import type { PermissionKey } from "@al-makan/types";
 
 /**
  * Single source of truth for primary navigation. Mobile always shows a
@@ -14,9 +15,18 @@ export const primaryNavItems = [
   { href: "/more", labelKey: "more", icon: MoreHorizontal },
 ] as const;
 
-export const desktopNavItems = [
+// `permission` gates an item behind a permission key — only shown when
+// the current user's session has it (see Sidebar/More, which both filter
+// on this the same way).
+export const desktopNavItems: Array<{
+  href: string;
+  labelKey: "home" | "orders" | "customers" | "inventory" | "settings";
+  icon: typeof LayoutDashboard;
+  permission?: PermissionKey;
+}> = [
   { href: "/", labelKey: "home", icon: LayoutDashboard },
   { href: "/orders", labelKey: "orders", icon: ClipboardList },
   { href: "/customers", labelKey: "customers", icon: Users },
   { href: "/inventory", labelKey: "inventory", icon: Package },
-] as const;
+  { href: "/settings/catalog", labelKey: "settings", icon: Settings, permission: "catalog.manage" },
+];

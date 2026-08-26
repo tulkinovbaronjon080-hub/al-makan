@@ -27,6 +27,8 @@ export const PERMISSION_KEYS = [
   "reports.view",
   "locations.manage",
   "locations.view",
+  "catalog.view",
+  "catalog.manage",
 ] as const;
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 
@@ -47,6 +49,8 @@ export const PERMISSION_DESCRIPTIONS: Record<PermissionKey, string> = {
   "reports.view": "View business reports",
   "locations.manage": "Create/edit warehouses and stores",
   "locations.view": "View warehouses and stores",
+  "catalog.view": "View brands, profiles, glass, colors, and accessories",
+  "catalog.manage": "Edit the brand/profile/glass/color/accessory catalog and pricing",
 };
 
 export const SYSTEM_ROLES = [
@@ -77,10 +81,12 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRole, PermissionKey[]> = {
     "inventory.view",
     "locations.view",
     "reports.view",
+    "catalog.view",
+    "catalog.manage",
   ],
-  SALES: ["orders.create", "orders.view"],
-  MEASUREMENT: ["orders.view", "orders.edit"],
-  PRODUCTION: ["production.manage", "inventory.view"],
+  SALES: ["orders.create", "orders.view", "catalog.view"],
+  MEASUREMENT: ["orders.view", "orders.edit", "catalog.view"],
+  PRODUCTION: ["production.manage", "inventory.view", "catalog.view"],
   WAREHOUSE: ["inventory.view", "inventory.adjust", "inventory.transfer", "locations.view"],
   STORE_CASHIER: ["store.sell", "store.return", "inventory.view"],
   INSTALLER: ["orders.view"],

@@ -10,12 +10,13 @@ import { BusinessesModule } from "./modules/businesses/businesses.module";
 import { UsersModule } from "./modules/users/users.module";
 import { CustomersModule } from "./modules/customers/customers.module";
 import { OrdersModule } from "./modules/orders/orders.module";
+import { CatalogModule } from "./modules/catalog/catalog.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "./common/guards/permissions.guard";
 import { validateEnv } from "./config/env.schema";
 
 // Domain modules (inventory, production, ...) register here starting
-// Phase 3+, one at a time, per the roadmap — folders already exist under
+// Phase 4+, one at a time, per the roadmap — folders already exist under
 // src/modules/ (see src/modules/README.md).
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { validateEnv } from "./config/env.schema";
     UsersModule,
     CustomersModule,
     OrdersModule,
+    CatalogModule,
   ],
   providers: [
     // JwtAuthGuard first (authenticates → sets request.user), then

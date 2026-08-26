@@ -30,6 +30,12 @@ model Business {
   locations Location[]
   customers Customer[]
   orders    Order[]
+  brands    Brand[]
+  series    ProfileSeries[]
+  profiles  Profile[]
+  glasses   Glass[]
+  colors    Color[]
+  accessories Accessory[]
 
   @@map("businesses")
 }
@@ -157,6 +163,113 @@ model Location {
 
   @@index([businessId])
   @@map("locations")
+}
+
+// ---------- Product catalog ----------
+// Pricing/spec reference data the Phase 4 configurator and Phase 5
+// calculation engine will read from — never hard-coded (brief §13/§14).
+// Fully business-scoped (no system-seeded defaults — every manufacturer
+// sources different brands/prices) and soft-disabled, never hard-deleted,
+// once orders can reference a specific profile/glass/etc.
+
+model Brand {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  series   ProfileSeries[]
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@map("brands")
+}
+
+model ProfileSeries {
+  id         String   @id @default(cuid())
+  businessId String
+  brandId    String
+  name       String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  brand    Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  profiles Profile[]
+
+  @@unique([brandId, name])
+  @@index([businessId])
+  @@map("profile_series")
+}
+
+model Profile {
+  id            String   @id @default(cuid())
+  businessId    String
+  seriesId      String
+  name          String // e.g. "Frame", "Sash", "Mullion"
+  pricePerMeter Int // whole UZS per meter
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  series   ProfileSeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@unique([seriesId, name])
+  @@index([businessId])
+  @@map("profiles")
+}
+
+model Glass {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String // e.g. "4mm tempered"
+  pricePerM2 Int // whole UZS per m²
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@map("glasses")
+}
+
+model Color {
+  id                String   @id @default(cuid())
+  businessId        String
+  name              String // e.g. "White", "Wood-effect walnut"
+  surchargePerMeter Int      @default(0) // whole UZS added per meter of profile
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@map("colors")
+}
+
+model Accessory {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String // e.g. "Handle - white"
+  price      Int // whole UZS per piece
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@map("accessories")
 }
 
 // ---------- Customers / Orders ----------

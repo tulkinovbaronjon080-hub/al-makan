@@ -13,8 +13,9 @@ const dict = getDictionary();
 /** Persistent desktop sidebar. Hidden below md — mobile uses BottomNav instead. */
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, role } = useAuth();
+  const { user, role, permissions } = useAuth();
   const initials = user?.fullName ? getInitials(user.fullName) : "";
+  const visibleItems = desktopNavItems.filter((item) => !item.permission || permissions.includes(item.permission));
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col bg-surface border-r border-border/70 p-4 md:flex">
@@ -24,7 +25,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5">
-        {desktopNavItems.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           const label = dict.nav[item.labelKey];
