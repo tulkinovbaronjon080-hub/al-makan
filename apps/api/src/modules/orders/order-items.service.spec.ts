@@ -6,6 +6,7 @@ import { ProfilesService } from "../catalog/profiles.service";
 import { GlassService } from "../catalog/glass.service";
 import { ColorsService } from "../catalog/colors.service";
 import { AccessoriesService } from "../catalog/accessories.service";
+import { PricingSettingsService } from "../catalog/pricing-settings.service";
 import { PrismaService } from "../../prisma/prisma.service";
 
 describe("OrderItemsService", () => {
@@ -16,6 +17,7 @@ describe("OrderItemsService", () => {
   let glass: { assertExists: jest.Mock };
   let colors: { assertExists: jest.Mock };
   let accessories: { assertAllActiveAndInBusiness: jest.Mock };
+  let pricingSettings: { get: jest.Mock };
 
   const dto = {
     productType: "WINDOW" as const,
@@ -30,13 +32,20 @@ describe("OrderItemsService", () => {
     quantity: 1,
   };
 
+  const profileRow = { id: "profile-1", name: "Frame", pricePerMeter: 45000, isActive: true };
+  const glassRow = { id: "glass-1", name: "4mm tempered", pricePerM2: 85000, isActive: true };
+  const colorRow = { id: "color-1", name: "White", surchargePerMeter: 0, isActive: true };
+  const accessoryRows = [{ id: "acc-1", name: "Handle", price: 25000 }];
+  const pricingRow = { laborRatePerMeter: 15000, sealPricePerMeter: 3000, marginPercent: 25 };
+
   beforeEach(() => {
     prisma = { orderItem: { create: jest.fn(), findFirst: jest.fn(), delete: jest.fn() } };
     orders = { assertOrderInBusiness: jest.fn().mockResolvedValue({ id: "order-1" }) };
-    profiles = { assertExists: jest.fn().mockResolvedValue({ id: "profile-1", isActive: true }) };
-    glass = { assertExists: jest.fn().mockResolvedValue({ id: "glass-1", isActive: true }) };
-    colors = { assertExists: jest.fn().mockResolvedValue({ id: "color-1", isActive: true }) };
-    accessories = { assertAllActiveAndInBusiness: jest.fn().mockResolvedValue(undefined) };
+    profiles = { assertExists: jest.fn().mockResolvedValue(profileRow) };
+    glass = { assertExists: jest.fn().mockResolvedValue(glassRow) };
+    colors = { assertExists: jest.fn().mockResolvedValue(colorRow) };
+    accessories = { assertAllActiveAndInBusiness: jest.fn().mockResolvedValue(accessoryRows) };
+    pricingSettings = { get: jest.fn().mockResolvedValue(pricingRow) };
 
     service = new OrderItemsService(
       prisma as unknown as PrismaService,
@@ -45,6 +54,7 @@ describe("OrderItemsService", () => {
       glass as unknown as GlassService,
       colors as unknown as ColorsService,
       accessories as unknown as AccessoriesService,
+      pricingSettings as unknown as PricingSettingsService,
     );
   });
 
@@ -64,7 +74,7 @@ describe("OrderItemsService", () => {
     });
 
     it("rejects when the profile is inactive", async () => {
-      profiles.assertExists.mockResolvedValue({ id: "profile-1", isActive: false });
+      profiles.assertExists.mockResolvedValue({ ...profileRow, isActive: false });
 
       await expect(service.create("biz-1", "order-1", dto)).rejects.toThrow(BadRequestException);
       expect(prisma.orderItem.create).not.toHaveBeenCalled();
@@ -87,16 +97,19 @@ describe("OrderItemsService", () => {
         widthMm: dto.widthMm,
         heightMm: dto.heightMm,
         sections: dto.sections,
-        profileId: dto.profileId,
-        glassId: dto.glassId,
-        colorId: dto.colorId,
-        accessoryIds: dto.accessoryIds,
         quantity: dto.quantity,
+        profile: profileRow,
+        glass: glassRow,
+        color: colorRow,
+        accessories: accessoryRows,
+        pricing: pricingRow,
       });
 
       const result = await service.create("biz-1", "order-1", dto);
 
       expect(result.materialCost).toBe(expected.materialCost);
+      expect(result.laborCost).toBe(expected.laborCost);
+      expect(result.additionalCost).toBe(expected.additionalCost);
       expect(result.totalCost).toBe(expected.totalCost);
       expect(result.sellingPrice).toBe(expected.sellingPrice);
       expect(result.bom).toEqual(expected.bom);

@@ -25,17 +25,18 @@ model Business {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  members   BusinessMember[]
-  roles     Role[]
-  locations Location[]
-  customers Customer[]
-  orders    Order[]
-  brands    Brand[]
-  series    ProfileSeries[]
-  profiles  Profile[]
-  glasses   Glass[]
-  colors    Color[]
-  accessories Accessory[]
+  members         BusinessMember[]
+  roles           Role[]
+  locations       Location[]
+  customers       Customer[]
+  orders          Order[]
+  brands          Brand[]
+  series          ProfileSeries[]
+  profiles        Profile[]
+  glasses         Glass[]
+  colors          Color[]
+  accessories     Accessory[]
+  pricingSettings PricingSettings?
 
   @@map("businesses")
 }
@@ -273,6 +274,25 @@ model Accessory {
   @@unique([businessId, name])
   @@index([businessId])
   @@map("accessories")
+}
+
+// One row per business, lazily created with defaults by
+// PricingSettingsService.get() rather than backfilled via migration —
+// covers both new registrations and businesses that predate this model.
+// Replaces the hard-coded labor/margin constants in the Phase 0 placeholder
+// calculation-engine formula; sealPricePerMeter gives brief §15's BOM
+// example ("Rubber – 6.2m") a real rate without a whole new catalog entity.
+model PricingSettings {
+  businessId        String   @id
+  laborRatePerMeter Int      @default(15000) // whole UZS per meter of profile
+  sealPricePerMeter Int      @default(3000) // whole UZS per meter of profile
+  marginPercent     Int      @default(25)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("pricing_settings")
 }
 
 // ---------- Customers / Orders ----------

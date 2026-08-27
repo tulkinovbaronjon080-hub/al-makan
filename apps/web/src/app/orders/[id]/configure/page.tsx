@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ChevronDown, Minus, Plus } from "lucide-react";
 import { calculateProductConfiguration } from "@al-makan/calculation-engine";
 import type { BrandDto, GlassDto, ColorDto, AccessoryDto, ProfileDto, ProfileSeriesDto } from "@al-makan/types";
-import type { OpeningDirection, ProductType, CreateOrderItemDto } from "@al-makan/types";
+import type { OpeningDirection, ProductType, CreateOrderItemDto, PricingSettingsDto } from "@al-makan/types";
 import { Button, cn } from "@al-makan/ui";
 import { api, ApiError } from "@/lib/api/client";
 import type { Paginated } from "@/lib/api/types";
@@ -59,25 +59,35 @@ export default function ConfiguratorPage() {
   const { data: glassList } = useActiveCatalog<GlassDto>("/catalog/glass");
   const { data: colorList } = useActiveCatalog<ColorDto>("/catalog/colors");
   const { data: accessoryList } = useActiveCatalog<AccessoryDto>("/catalog/accessories");
+  const { data: pricing } = useQuery({
+    queryKey: ["pricing-settings"],
+    queryFn: () => api.get<PricingSettingsDto>("/pricing-settings"),
+  });
+
+  const selectedProfile = profiles?.items.find((p) => p.id === profileId);
+  const selectedGlass = glassList?.items.find((g) => g.id === glassId);
+  const selectedColor = colorList?.items.find((c) => c.id === colorId);
+  const selectedAccessories = (accessoryList?.items ?? []).filter((a) => accessoryIds.includes(a.id));
 
   const preview = useMemo(() => {
-    if (!profileId || !glassId || !colorId) return null;
+    if (!selectedProfile || !selectedGlass || !selectedColor || !pricing) return null;
     try {
       return calculateProductConfiguration({
         productType,
         widthMm,
         heightMm,
         sections,
-        profileId,
-        glassId,
-        colorId,
-        accessoryIds,
         quantity,
+        profile: selectedProfile,
+        glass: selectedGlass,
+        color: selectedColor,
+        accessories: selectedAccessories,
+        pricing,
       });
     } catch {
       return null;
     }
-  }, [productType, widthMm, heightMm, sections, profileId, glassId, colorId, accessoryIds, quantity]);
+  }, [productType, widthMm, heightMm, sections, quantity, selectedProfile, selectedGlass, selectedColor, selectedAccessories, pricing]);
 
   const createItem = useMutation({
     mutationFn: (dto: CreateOrderItemDto) => api.post(`/orders/${params.id}/items`, dto),
@@ -243,9 +253,7 @@ export default function ConfiguratorPage() {
       </div>
 
       <div className="sticky bottom-0 border-t border-border/70 bg-surface p-4 md:px-6">
-        <p className="mb-1 text-[10.5px] text-muted-foreground">
-          Estimated price — formulas finalized in a later phase
-        </p>
+        <p className="mb-1 text-[10.5px] text-muted-foreground">Selling price</p>
         <div className="flex items-center gap-3">
           <div className="flex-1">
             <p className="font-mono text-xl font-bold tracking-tight">

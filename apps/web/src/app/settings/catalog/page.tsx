@@ -6,8 +6,9 @@ import { ArrowLeft } from "lucide-react";
 import { cn } from "@al-makan/ui";
 import { CatalogPriceList } from "@/components/catalog-price-list";
 import { BrandsSection } from "./brands-section";
+import { PricingSection } from "./pricing-section";
 
-const TABS = ["brands", "glass", "colors", "accessories"] as const;
+const TABS = ["brands", "glass", "colors", "accessories", "pricing"] as const;
 type Tab = (typeof TABS)[number];
 
 const TAB_LABELS: Record<Tab, string> = {
@@ -15,6 +16,7 @@ const TAB_LABELS: Record<Tab, string> = {
   glass: "Glass",
   colors: "Colors",
   accessories: "Accessories",
+  pricing: "Pricing",
 };
 
 export default function CatalogSettingsPage() {
@@ -64,6 +66,7 @@ export default function CatalogSettingsPage() {
       {tab === "accessories" && (
         <CatalogPriceList apiPath="/catalog/accessories" priceField="price" unitLabel="/ pc" namePlaceholder="e.g. Handle - white" />
       )}
+      {tab === "pricing" && <PricingSection />}
     </div>
   );
 }

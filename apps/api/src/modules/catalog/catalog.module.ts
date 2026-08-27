@@ -11,6 +11,8 @@ import { ColorsController } from "./colors.controller";
 import { ColorsService } from "./colors.service";
 import { AccessoriesController } from "./accessories.controller";
 import { AccessoriesService } from "./accessories.service";
+import { PricingSettingsController } from "./pricing-settings.controller";
+import { PricingSettingsService } from "./pricing-settings.service";
 
 @Module({
   controllers: [
@@ -20,10 +22,19 @@ import { AccessoriesService } from "./accessories.service";
     GlassController,
     ColorsController,
     AccessoriesController,
+    PricingSettingsController,
   ],
-  providers: [BrandsService, ProfileSeriesService, ProfilesService, GlassService, ColorsService, AccessoriesService],
+  providers: [
+    BrandsService,
+    ProfileSeriesService,
+    ProfilesService,
+    GlassService,
+    ColorsService,
+    AccessoriesService,
+    PricingSettingsService,
+  ],
   // OrdersModule needs these to validate an OrderItem's profile/glass/
-  // color/accessory selections belong to the business before pricing them.
-  exports: [ProfilesService, GlassService, ColorsService, AccessoriesService],
+  // color/accessory selections belong to the business and to price it.
+  exports: [ProfilesService, GlassService, ColorsService, AccessoriesService, PricingSettingsService],
 })
 export class CatalogModule {}

@@ -1,21 +1,15 @@
 import type { ProductConfigurationInput, ProductConfigurationResult } from "./types";
 
 /**
- * PLACEHOLDER FORMULA — Phase 0 exists only to prove this function is a
- * pure, dependency-free, independently testable domain service (per the
- * project brief: never put calculation formulas inside UI components).
+ * Reads real catalog prices (packages/database's Profile/Glass/Color/
+ * Accessory + PricingSettings, passed in by the caller — see types.ts).
+ * Replaces the Phase 0-4 placeholder (flat area-based rate); see the
+ * Phase 5 plan for the formula rationale.
  *
- * Real per-brand/per-profile/per-glass pricing tables, labor formulas, and
- * BOM derivation land in Phase 5 once the catalog module (brands, series,
- * profiles, glass, accessories) exists to look prices up from. Until then
- * this uses flat placeholder rates so callers and tests have a stable
- * shape to build against.
+ * Existing OrderItem rows already snapshotted whatever the placeholder
+ * computed at their creation time and are untouched by this change —
+ * only newly created items use this formula.
  */
-
-const PLACEHOLDER_MATERIAL_RATE_PER_M2 = 350_000; // UZS per m^2
-const PLACEHOLDER_LABOR_RATE_PER_SECTION = 40_000; // UZS per section
-const PLACEHOLDER_MARGIN_RATE = 0.25;
-
 export function calculateProductConfiguration(
   input: ProductConfigurationInput,
 ): ProductConfigurationResult {
@@ -29,31 +23,55 @@ export function calculateProductConfiguration(
     throw new Error("quantity must be at least 1");
   }
 
-  const areaM2 = (input.widthMm / 1000) * (input.heightMm / 1000);
+  const widthM = input.widthMm / 1000;
+  const heightM = input.heightMm / 1000;
+  const areaM2 = widthM * heightM;
 
-  const materialCost = Math.round(areaM2 * PLACEHOLDER_MATERIAL_RATE_PER_M2 * input.quantity);
-  const laborCost = Math.round(
-    input.sections * PLACEHOLDER_LABOR_RATE_PER_SECTION * input.quantity,
+  const perimeterM = 2 * (widthM + heightM);
+  const mullionsM = (input.sections - 1) * heightM;
+  const totalProfileM = perimeterM + mullionsM;
+
+  const accessoriesUnitCost = input.accessories.reduce((sum, a) => sum + a.price, 0);
+  const sealUnitCost = totalProfileM * input.pricing.sealPricePerMeter;
+
+  const materialCost = Math.round(
+    (totalProfileM * input.profile.pricePerMeter +
+      areaM2 * input.glass.pricePerM2 +
+      totalProfileM * input.color.surchargePerMeter) *
+      input.quantity,
   );
-  const additionalCost = 0;
+  const laborCost = Math.round(totalProfileM * input.pricing.laborRatePerMeter * input.quantity);
+  const additionalCost = Math.round((sealUnitCost + accessoriesUnitCost) * input.quantity);
   const totalCost = materialCost + laborCost + additionalCost;
-  const margin = Math.round(totalCost * PLACEHOLDER_MARGIN_RATE);
+  const margin = Math.round((totalCost * input.pricing.marginPercent) / 100);
   const sellingPrice = totalCost + margin;
 
   return {
     bom: [
       {
-        materialId: input.profileId,
-        label: "Profile (placeholder)",
-        quantity: Number((2 * ((input.widthMm + input.heightMm) / 1000)).toFixed(2)),
+        materialId: input.profile.id,
+        label: `Profile — ${input.profile.name}`,
+        quantity: Number((totalProfileM * input.quantity).toFixed(2)),
         unit: "M",
       },
       {
-        materialId: input.glassId,
-        label: "Glass (placeholder)",
-        quantity: Number(areaM2.toFixed(2)),
+        materialId: input.glass.id,
+        label: `Glass — ${input.glass.name}`,
+        quantity: Number((areaM2 * input.quantity).toFixed(2)),
         unit: "M2",
       },
+      {
+        materialId: "seal",
+        label: "Rubber/seal",
+        quantity: Number((totalProfileM * input.quantity).toFixed(2)),
+        unit: "M",
+      },
+      ...input.accessories.map((a) => ({
+        materialId: a.id,
+        label: a.name,
+        quantity: input.quantity,
+        unit: "PCS" as const,
+      })),
     ],
     materialCost,
     laborCost,

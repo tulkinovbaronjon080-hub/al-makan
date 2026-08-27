@@ -8,14 +8,15 @@ import { ProfilesService } from "../catalog/profiles.service";
 import { GlassService } from "../catalog/glass.service";
 import { ColorsService } from "../catalog/colors.service";
 import { AccessoriesService } from "../catalog/accessories.service";
+import { PricingSettingsService } from "../catalog/pricing-settings.service";
 
 const catalogRefSelect = { id: true, name: true } as const;
 
 /**
  * Server-side recompute is authoritative — whatever price the client's
  * live preview showed is discarded; only what calculateProductConfiguration
- * returns here gets persisted. See the Phase 4 plan: this still calls the
- * Phase 0 placeholder formula unchanged (Phase 5 replaces its internals).
+ * returns here gets persisted. Reads real catalog prices + the business's
+ * PricingSettings — see the Phase 5 plan for the formula.
  */
 @Injectable()
 export class OrderItemsService {
@@ -26,31 +27,34 @@ export class OrderItemsService {
     private readonly glass: GlassService,
     private readonly colors: ColorsService,
     private readonly accessories: AccessoriesService,
+    private readonly pricingSettings: PricingSettingsService,
   ) {}
 
   async create(businessId: string, orderId: string, dto: CreateOrderItemDto) {
     await this.orders.assertOrderInBusiness(businessId, orderId);
 
-    const [profile, glass, color] = await Promise.all([
+    const [profile, glass, color, pricing] = await Promise.all([
       this.profiles.assertExists(businessId, dto.profileId),
       this.glass.assertExists(businessId, dto.glassId),
       this.colors.assertExists(businessId, dto.colorId),
+      this.pricingSettings.get(businessId),
     ]);
     if (!profile.isActive || !glass.isActive || !color.isActive) {
       throw new BadRequestException("Profile, glass, and color must all be active to use in a new order item");
     }
-    await this.accessories.assertAllActiveAndInBusiness(businessId, dto.accessoryIds);
+    const accessories = await this.accessories.assertAllActiveAndInBusiness(businessId, dto.accessoryIds);
 
     const result = calculateProductConfiguration({
       productType: dto.productType,
       widthMm: dto.widthMm,
       heightMm: dto.heightMm,
       sections: dto.sections,
-      profileId: dto.profileId,
-      glassId: dto.glassId,
-      colorId: dto.colorId,
-      accessoryIds: dto.accessoryIds,
       quantity: dto.quantity,
+      profile,
+      glass,
+      color,
+      accessories,
+      pricing,
     });
 
     return this.prisma.orderItem.create({

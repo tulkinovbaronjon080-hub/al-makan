@@ -47,16 +47,20 @@ export class AccessoriesService {
     return accessory;
   }
 
-  /** Confirms every id belongs to this business and is active — used when attaching accessories to a new OrderItem. */
+  /**
+   * Confirms every id belongs to this business and is active, and returns
+   * the rows (with prices) — used when attaching accessories to a new
+   * OrderItem, both to validate the selection and to price it.
+   */
   async assertAllActiveAndInBusiness(businessId: string, ids: string[]) {
-    if (ids.length === 0) return;
+    if (ids.length === 0) return [];
     const found = await this.prisma.accessory.findMany({
       where: { id: { in: ids }, businessId, isActive: true },
-      select: { id: true },
     });
     if (found.length !== new Set(ids).size) {
       throw new BadRequestException("One or more accessories are invalid or unavailable");
     }
+    return found;
   }
 
   private async assertNameFree(businessId: string, name: string, excludeId?: string) {
