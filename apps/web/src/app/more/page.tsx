@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Factory, LogOut, Settings, Users } from "lucide-react";
+import { ChevronRight, Factory, LogOut, Settings, Users, Warehouse } from "lucide-react";
 import { Card } from "@al-makan/ui";
 import { useAuth } from "@/lib/auth/auth-context";
 
@@ -12,6 +12,7 @@ export default function MorePage() {
   const initials = user?.fullName ? getInitials(user.fullName) : "";
   const canManageCatalog = permissions.includes("catalog.manage");
   const canManageProduction = permissions.includes("production.manage");
+  const canManageLocations = permissions.includes("locations.manage");
 
   return (
     <div className="mx-auto max-w-md space-y-5 p-4 md:p-6">
@@ -38,6 +39,13 @@ export default function MorePage() {
           <Link href="/production" className="flex items-center gap-3 border-t border-border/60 px-4 py-3.5">
             <Factory className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.75} />
             <span className="flex-1 text-[13.5px] font-semibold">Production</span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
+          </Link>
+        )}
+        {canManageLocations && (
+          <Link href="/settings/locations" className="flex items-center gap-3 border-t border-border/60 px-4 py-3.5">
+            <Warehouse className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.75} />
+            <span className="flex-1 text-[13.5px] font-semibold">Locations</span>
             <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
           </Link>
         )}

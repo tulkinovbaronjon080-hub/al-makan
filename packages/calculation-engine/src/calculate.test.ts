@@ -30,6 +30,7 @@ describe("calculateProductConfiguration", () => {
     const profileLine = result.bom.find((l) => l.materialId === "profile-1");
     expect(profileLine?.quantity).toBeCloseTo(TOTAL_PROFILE_M, 2);
     expect(profileLine?.unit).toBe("M");
+    expect(profileLine?.materialType).toBe("PROFILE");
   });
 
   it("a single-section product has no mullions (profile length = perimeter only)", () => {
@@ -43,6 +44,7 @@ describe("calculateProductConfiguration", () => {
     const glassLine = result.bom.find((l) => l.materialId === "glass-1");
     expect(glassLine?.quantity).toBeCloseTo(AREA_M2, 2);
     expect(glassLine?.unit).toBe("M2");
+    expect(glassLine?.materialType).toBe("GLASS");
   });
 
   it("materialCost = profile length * pricePerMeter + area * pricePerM2 + color surcharge", () => {
@@ -69,7 +71,13 @@ describe("calculateProductConfiguration", () => {
   it("includes a seal/rubber BOM line priced via sealPricePerMeter, bucketed into additionalCost", () => {
     const result = calculateProductConfiguration(baseInput());
     const sealLine = result.bom.find((l) => l.materialId === "seal");
-    expect(sealLine).toEqual({ materialId: "seal", label: "Rubber/seal", quantity: TOTAL_PROFILE_M, unit: "M" });
+    expect(sealLine).toEqual({
+      materialId: "seal",
+      materialType: "SEAL",
+      label: "Rubber/seal",
+      quantity: TOTAL_PROFILE_M,
+      unit: "M",
+    });
     expect(result.additionalCost).toBe(Math.round(TOTAL_PROFILE_M * 3000));
   });
 
@@ -83,8 +91,20 @@ describe("calculateProductConfiguration", () => {
       }),
     );
 
-    expect(result.bom).toContainEqual({ materialId: "handle-1", label: "Handle - white", quantity: 1, unit: "PCS" });
-    expect(result.bom).toContainEqual({ materialId: "hinge-1", label: "Hinge", quantity: 1, unit: "PCS" });
+    expect(result.bom).toContainEqual({
+      materialId: "handle-1",
+      materialType: "ACCESSORY",
+      label: "Handle - white",
+      quantity: 1,
+      unit: "PCS",
+    });
+    expect(result.bom).toContainEqual({
+      materialId: "hinge-1",
+      materialType: "ACCESSORY",
+      label: "Hinge",
+      quantity: 1,
+      unit: "PCS",
+    });
     expect(result.additionalCost).toBe(Math.round(TOTAL_PROFILE_M * 3000 + 25000 + 8000));
   });
 

@@ -1,5 +1,10 @@
 import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
-import { advanceProductionStageSchema, type AdvanceProductionStageDto } from "@al-makan/types";
+import {
+  advanceProductionStageSchema,
+  startProductionSchema,
+  type AdvanceProductionStageDto,
+  type StartProductionDto,
+} from "@al-makan/types";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { RequirePermissions } from "../../common/decorators/require-permissions.decorator";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe";
@@ -12,8 +17,12 @@ export class ProductionController {
 
   @RequirePermissions("orders.edit")
   @Post("orders/:orderId/start")
-  startProduction(@CurrentUser() user: AuthenticatedUser, @Param("orderId") orderId: string) {
-    return this.production.startProduction(user.businessId, orderId, user.userId);
+  startProduction(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("orderId") orderId: string,
+    @Body(new ZodValidationPipe(startProductionSchema)) body: StartProductionDto,
+  ) {
+    return this.production.startProduction(user.businessId, orderId, user.userId, body.locationId);
   }
 
   @RequirePermissions("production.manage")

@@ -2,20 +2,26 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { PRODUCTION_STAGE_SEQUENCE, type ProductionStage } from "@al-makan/types";
 import type { BomLine } from "@al-makan/calculation-engine";
 import { PrismaService } from "../../prisma/prisma.service";
+import { InventoryService } from "../inventory/inventory.service";
 
 const customerSummarySelect = { id: true, fullName: true, phone: true } as const;
 
 /**
- * Self-contained module — only depends on PrismaService, same as every other
- * module. Reaches into `order`/`orderItem` rows directly rather than
- * injecting OrdersService, the same way OrderItemsService already does for
- * everything beyond its own tenant-scoping check.
+ * Reaches into `order`/`orderItem` rows directly rather than injecting
+ * OrdersService, the same way OrderItemsService already does for everything
+ * beyond its own tenant-scoping check. InventoryService IS injected — unlike
+ * Orders, stock-balance invariants (never negative, always ledgered) are
+ * real shared logic worth not duplicating, the same reasoning
+ * OrderItemsService uses to inject the Catalog services.
  */
 @Injectable()
 export class ProductionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly inventory: InventoryService,
+  ) {}
 
-  async startProduction(businessId: string, orderId: string, actorUserId: string) {
+  async startProduction(businessId: string, orderId: string, actorUserId: string, locationId: string) {
     const order = await this.prisma.order.findFirst({
       where: { id: orderId, businessId },
       include: { items: true },
@@ -30,7 +36,11 @@ export class ProductionService {
       throw new BadRequestException("Order has no products to produce");
     }
 
+    const requirements = this.aggregateBom(order.items.map((item) => item.bom as unknown as BomLine[]));
+
     return this.prisma.$transaction(async (tx) => {
+      await this.inventory.consumeForOrder(tx, businessId, locationId, orderId, actorUserId, requirements);
+
       for (const item of order.items) {
         const task = await tx.productionTask.create({
           data: { orderItemId: item.id },
@@ -123,9 +133,19 @@ export class ProductionService {
       include: { orderItem: true },
     });
 
-    const totals = new Map<string, { materialId: string; label: string; quantity: number; unit: "M" | "M2" | "PCS" }>();
-    for (const task of tasks) {
-      const bom = task.orderItem.bom as unknown as BomLine[];
+    return this.aggregateBom(tasks.map((task) => task.orderItem.bom as unknown as BomLine[]));
+  }
+
+  /**
+   * Groups BOM lines by materialId and sums their quantities — shared by
+   * getMaterialRequirements (across active tasks, business-wide) and
+   * startProduction (across one order's items, to check against stock).
+   * Rounded to avoid floating-point summation drift (e.g. 6.6 + 3.3 =
+   * 9.899999999999999) surfacing raw on the shop floor / in a stock check.
+   */
+  private aggregateBom(bomLists: BomLine[][]) {
+    const totals = new Map<string, BomLine>();
+    for (const bom of bomLists) {
       for (const line of bom) {
         const existing = totals.get(line.materialId);
         if (existing) {
@@ -136,8 +156,6 @@ export class ProductionService {
       }
     }
 
-    // Rounded to avoid floating-point summation drift (e.g. 6.6 + 3.3 =
-    // 9.899999999999999) surfacing raw on the shop floor's cut list.
     return [...totals.values()]
       .map((line) => ({ ...line, quantity: Math.round(line.quantity * 100) / 100 }))
       .sort((a, b) => a.label.localeCompare(b.label));

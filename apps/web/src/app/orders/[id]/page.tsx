@@ -5,10 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ChevronDown, Phone, Plus, Trash2 } from "lucide-react";
-import type { OrderDetailDto, OrderStatus } from "@al-makan/types";
+import type { LocationDto, OrderDetailDto, OrderStatus } from "@al-makan/types";
 import { orderStatusSchema } from "@al-makan/types";
 import { Button, Card, EmptyState, Input, ProductionStageBadge, StatusBadge, buttonVariants, cn } from "@al-makan/ui";
 import { api, ApiError } from "@/lib/api/client";
+import type { Paginated } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/auth-context";
 
 export default function OrderDetailPage() {
@@ -19,12 +20,21 @@ export default function OrderDetailPage() {
   const [nextStatus, setNextStatus] = useState<OrderStatus | "">("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [startProductionLocationId, setStartProductionLocationId] = useState("");
+  const [startProductionError, setStartProductionError] = useState<string | null>(null);
 
   const queryKey = ["orders", params.id];
   const { data: order, isLoading } = useQuery({
     queryKey,
     queryFn: () => api.get<OrderDetailDto>(`/orders/${params.id}`),
   });
+
+  const { data: locations } = useQuery({
+    queryKey: ["locations", "active"],
+    queryFn: () => api.get<Paginated<LocationDto>>("/locations?page=1&pageSize=100&isActive=true"),
+  });
+  const effectiveLocationId =
+    startProductionLocationId || (locations?.items.length === 1 ? (locations.items[0]?.id ?? "") : "");
 
   const changeStatus = useMutation({
     mutationFn: () =>
@@ -38,7 +48,7 @@ export default function OrderDetailPage() {
   });
 
   const startProduction = useMutation({
-    mutationFn: () => api.post(`/production/orders/${params.id}/start`, {}),
+    mutationFn: () => api.post(`/production/orders/${params.id}/start`, { locationId: effectiveLocationId }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey });
       await queryClient.invalidateQueries({ queryKey: ["orders"] });
@@ -57,6 +67,16 @@ export default function OrderDetailPage() {
       await changeStatus.mutateAsync();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
+    }
+  }
+
+  async function onStartProduction() {
+    setStartProductionError(null);
+    if (!effectiveLocationId) return;
+    try {
+      await startProduction.mutateAsync();
+    } catch (err) {
+      setStartProductionError(err instanceof ApiError ? err.message : "Something went wrong");
     }
   }
 
@@ -115,9 +135,28 @@ export default function OrderDetailPage() {
       </Card>
 
       {order.status === "CONFIRMED" && permissions.includes("orders.edit") && (
-        <Button className="w-full" disabled={startProduction.isPending} onClick={() => startProduction.mutate()}>
-          {startProduction.isPending ? "Starting..." : "Start production"}
-        </Button>
+        <Card className="space-y-2.5 border border-border/70 p-4">
+          <p className="text-[12px] font-bold">Start production</p>
+          <div className="relative">
+            <select
+              value={effectiveLocationId}
+              onChange={(e) => setStartProductionLocationId(e.target.value)}
+              className="h-touch w-full appearance-none rounded-lg border-[1.5px] border-input bg-surface px-3.5 pr-9 text-[13.5px] focus-visible:border-ring focus-visible:outline-none"
+            >
+              <option value="">Pull materials from…</option>
+              {locations?.items.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          </div>
+          {startProductionError && <p className="text-sm text-danger">{startProductionError}</p>}
+          <Button className="w-full" disabled={!effectiveLocationId || startProduction.isPending} onClick={onStartProduction}>
+            {startProduction.isPending ? "Starting..." : "Start production"}
+          </Button>
+        </Card>
       )}
 
       <div className="flex items-center justify-between">

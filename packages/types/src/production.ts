@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { materialTypeSchema } from "./inventory";
 
 /**
  * Mirrors the Prisma ProductionStage enum independently — same convention as
@@ -51,6 +52,7 @@ export type ProductionQueueItemDto = z.infer<typeof productionQueueItemSchema>;
 
 export const materialRequirementSchema = z.object({
   materialId: z.string(),
+  materialType: materialTypeSchema,
   label: z.string(),
   quantity: z.number(),
   unit: z.enum(["M", "M2", "PCS"]),
@@ -61,3 +63,10 @@ export const advanceProductionStageSchema = z.object({
   stage: productionStageSchema,
 });
 export type AdvanceProductionStageDto = z.infer<typeof advanceProductionStageSchema>;
+
+// Which location's stock the job's materials get pulled from — required
+// since Phase 7 wired real inventory consumption into starting production.
+export const startProductionSchema = z.object({
+  locationId: z.string().min(1),
+});
+export type StartProductionDto = z.infer<typeof startProductionSchema>;

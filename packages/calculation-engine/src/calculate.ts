@@ -50,24 +50,28 @@ export function calculateProductConfiguration(
     bom: [
       {
         materialId: input.profile.id,
+        materialType: "PROFILE",
         label: `Profile — ${input.profile.name}`,
         quantity: Number((totalProfileM * input.quantity).toFixed(2)),
         unit: "M",
       },
       {
         materialId: input.glass.id,
+        materialType: "GLASS",
         label: `Glass — ${input.glass.name}`,
         quantity: Number((areaM2 * input.quantity).toFixed(2)),
         unit: "M2",
       },
       {
         materialId: "seal",
+        materialType: "SEAL",
         label: "Rubber/seal",
         quantity: Number((totalProfileM * input.quantity).toFixed(2)),
         unit: "M",
       },
       ...input.accessories.map((a) => ({
         materialId: a.id,
+        materialType: "ACCESSORY" as const,
         label: a.name,
         quantity: input.quantity,
         unit: "PCS" as const,

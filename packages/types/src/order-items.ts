@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { materialTypeSchema } from "./inventory";
 import { productionTaskSchema } from "./production";
 
 /**
@@ -30,6 +31,7 @@ export type CreateOrderItemDto = z.infer<typeof createOrderItemSchema>;
 
 const bomLineSchema = z.object({
   materialId: z.string(),
+  materialType: materialTypeSchema,
   label: z.string(),
   quantity: z.number(),
   unit: z.enum(["M", "M2", "PCS"]),

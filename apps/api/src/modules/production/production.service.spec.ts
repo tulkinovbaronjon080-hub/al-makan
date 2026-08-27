@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { ProductionService } from "./production.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { InventoryService } from "../inventory/inventory.service";
 
 describe("ProductionService", () => {
   let service: ProductionService;
@@ -9,6 +10,7 @@ describe("ProductionService", () => {
     productionTask: { findFirst: jest.Mock; findMany: jest.Mock };
     $transaction: jest.Mock;
   };
+  let inventory: { consumeForOrder: jest.Mock };
 
   beforeEach(() => {
     prisma = {
@@ -16,28 +18,35 @@ describe("ProductionService", () => {
       productionTask: { findFirst: jest.fn(), findMany: jest.fn() },
       $transaction: jest.fn(),
     };
-    service = new ProductionService(prisma as unknown as PrismaService);
+    inventory = { consumeForOrder: jest.fn().mockResolvedValue(undefined) };
+    service = new ProductionService(prisma as unknown as PrismaService, inventory as unknown as InventoryService);
   });
 
   describe("startProduction", () => {
     it("rejects an order that doesn't belong to this business", async () => {
       prisma.order.findFirst.mockResolvedValue(null);
 
-      await expect(service.startProduction("biz-1", "order-x", "user-1")).rejects.toThrow(NotFoundException);
+      await expect(service.startProduction("biz-1", "order-x", "user-1", "loc-1")).rejects.toThrow(
+        NotFoundException,
+      );
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
     it("rejects an order that isn't CONFIRMED", async () => {
       prisma.order.findFirst.mockResolvedValue({ id: "order-1", status: "NEW", items: [{ id: "item-1" }] });
 
-      await expect(service.startProduction("biz-1", "order-1", "user-1")).rejects.toThrow(BadRequestException);
+      await expect(service.startProduction("biz-1", "order-1", "user-1", "loc-1")).rejects.toThrow(
+        BadRequestException,
+      );
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
     it("rejects an order with no products", async () => {
       prisma.order.findFirst.mockResolvedValue({ id: "order-1", status: "CONFIRMED", items: [] });
 
-      await expect(service.startProduction("biz-1", "order-1", "user-1")).rejects.toThrow(BadRequestException);
+      await expect(service.startProduction("biz-1", "order-1", "user-1", "loc-1")).rejects.toThrow(
+        BadRequestException,
+      );
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
@@ -45,7 +54,10 @@ describe("ProductionService", () => {
       prisma.order.findFirst.mockResolvedValue({
         id: "order-1",
         status: "CONFIRMED",
-        items: [{ id: "item-1" }, { id: "item-2" }],
+        items: [
+          { id: "item-1", bom: [{ materialId: "profile-1", materialType: "PROFILE", label: "Frame", quantity: 6.6, unit: "M" }] },
+          { id: "item-2", bom: [] },
+        ],
       });
 
       const taskCreate = jest
@@ -55,18 +67,28 @@ describe("ProductionService", () => {
       const taskHistoryCreate = jest.fn().mockResolvedValue({});
       const orderUpdate = jest.fn().mockResolvedValue({ id: "order-1", status: "PRODUCTION" });
       const orderHistoryCreate = jest.fn().mockResolvedValue({});
+      let tx: unknown;
 
-      prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
-        fn({
+      prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+        tx = {
           productionTask: { create: taskCreate },
           productionTaskStageHistory: { create: taskHistoryCreate },
           order: { update: orderUpdate },
           orderStatusHistory: { create: orderHistoryCreate },
-        }),
+        };
+        return fn(tx);
+      });
+
+      const result = await service.startProduction("biz-1", "order-1", "user-1", "loc-1");
+
+      expect(inventory.consumeForOrder).toHaveBeenCalledWith(
+        tx,
+        "biz-1",
+        "loc-1",
+        "order-1",
+        "user-1",
+        expect.arrayContaining([expect.objectContaining({ materialId: "profile-1", quantity: 6.6 })]),
       );
-
-      const result = await service.startProduction("biz-1", "order-1", "user-1");
-
       expect(taskCreate).toHaveBeenCalledTimes(2);
       expect(taskCreate).toHaveBeenCalledWith({ data: { orderItemId: "item-1" } });
       expect(taskCreate).toHaveBeenCalledWith({ data: { orderItemId: "item-2" } });
@@ -80,6 +102,25 @@ describe("ProductionService", () => {
         data: { orderId: "order-1", status: "PRODUCTION", changedByUserId: "user-1" },
       });
       expect(result).toEqual({ id: "order-1", status: "PRODUCTION" });
+    });
+
+    it("creates no tasks and doesn't touch the order when stock is insufficient", async () => {
+      prisma.order.findFirst.mockResolvedValue({
+        id: "order-1",
+        status: "CONFIRMED",
+        items: [{ id: "item-1", bom: [{ materialId: "profile-1", materialType: "PROFILE", label: "Frame", quantity: 6.6, unit: "M" }] }],
+      });
+
+      const taskCreate = jest.fn();
+      inventory.consumeForOrder.mockRejectedValue(new BadRequestException("Insufficient stock to start production"));
+      prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({ productionTask: { create: taskCreate } }),
+      );
+
+      await expect(service.startProduction("biz-1", "order-1", "user-1", "loc-1")).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(taskCreate).not.toHaveBeenCalled();
     });
   });
 
@@ -189,16 +230,16 @@ describe("ProductionService", () => {
         {
           orderItem: {
             bom: [
-              { materialId: "profile-1", label: "Frame", quantity: 6.6, unit: "M" },
-              { materialId: "seal", label: "Rubber seal", quantity: 6.6, unit: "M" },
+              { materialId: "profile-1", materialType: "PROFILE", label: "Frame", quantity: 6.6, unit: "M" },
+              { materialId: "seal", materialType: "SEAL", label: "Rubber seal", quantity: 6.6, unit: "M" },
             ],
           },
         },
         {
           orderItem: {
             bom: [
-              { materialId: "profile-1", label: "Frame", quantity: 3.3, unit: "M" },
-              { materialId: "acc-1", label: "Handle", quantity: 2, unit: "PCS" },
+              { materialId: "profile-1", materialType: "PROFILE", label: "Frame", quantity: 3.3, unit: "M" },
+              { materialId: "acc-1", materialType: "ACCESSORY", label: "Handle", quantity: 2, unit: "PCS" },
             ],
           },
         },
@@ -208,9 +249,9 @@ describe("ProductionService", () => {
 
       expect(result).toEqual(
         expect.arrayContaining([
-          { materialId: "profile-1", label: "Frame", quantity: 9.9, unit: "M" },
-          { materialId: "seal", label: "Rubber seal", quantity: 6.6, unit: "M" },
-          { materialId: "acc-1", label: "Handle", quantity: 2, unit: "PCS" },
+          { materialId: "profile-1", materialType: "PROFILE", label: "Frame", quantity: 9.9, unit: "M" },
+          { materialId: "seal", materialType: "SEAL", label: "Rubber seal", quantity: 6.6, unit: "M" },
+          { materialId: "acc-1", materialType: "ACCESSORY", label: "Handle", quantity: 2, unit: "PCS" },
         ]),
       );
       expect(result).toHaveLength(3);

@@ -1,4 +1,4 @@
-import { ClipboardList, Factory, LayoutDashboard, Package, MoreHorizontal, Settings, Users } from "lucide-react";
+import { ClipboardList, Factory, LayoutDashboard, Package, MoreHorizontal, Settings, Users, Warehouse } from "lucide-react";
 import type { PermissionKey } from "@al-makan/types";
 
 /**
@@ -20,7 +20,7 @@ export const primaryNavItems = [
 // on this the same way).
 export const desktopNavItems: Array<{
   href: string;
-  labelKey: "home" | "orders" | "customers" | "inventory" | "production" | "settings";
+  labelKey: "home" | "orders" | "customers" | "inventory" | "production" | "locations" | "settings";
   icon: typeof LayoutDashboard;
   permission?: PermissionKey;
 }> = [
@@ -29,5 +29,6 @@ export const desktopNavItems: Array<{
   { href: "/customers", labelKey: "customers", icon: Users },
   { href: "/inventory", labelKey: "inventory", icon: Package },
   { href: "/production", labelKey: "production", icon: Factory, permission: "production.manage" },
+  { href: "/settings/locations", labelKey: "locations", icon: Warehouse, permission: "locations.manage" },
   { href: "/settings/catalog", labelKey: "settings", icon: Settings, permission: "catalog.manage" },
 ];

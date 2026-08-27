@@ -50,10 +50,11 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  memberships                 BusinessMember[]
-  refreshTokens               RefreshToken[]
-  orderStatusChanges          OrderStatusHistory[]
-  productionTaskStageChanges  ProductionTaskStageHistory[]
+  memberships                BusinessMember[]
+  refreshTokens              RefreshToken[]
+  orderStatusChanges         OrderStatusHistory[]
+  productionTaskStageChanges ProductionTaskStageHistory[]
+  stockMovementChanges       StockMovement[]
 
   @@map("users")
 }
@@ -161,7 +162,9 @@ model Location {
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  inventoryItems InventoryItem[]
+  stockMovements StockMovement[]
 
   @@index([businessId])
   @@map("locations")
@@ -341,10 +344,11 @@ model Order {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  business      Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  customer      Customer             @relation(fields: [customerId], references: [id])
-  statusHistory OrderStatusHistory[]
-  items         OrderItem[]
+  business       Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer       Customer             @relation(fields: [customerId], references: [id])
+  statusHistory  OrderStatusHistory[]
+  items          OrderItem[]
+  stockMovements StockMovement[]
 
   @@unique([businessId, orderNumber])
   @@index([businessId])
@@ -467,6 +471,64 @@ model ProductionTaskStageHistory {
 
   @@index([productionTaskId])
   @@map("production_task_stage_history")
+}
+
+// ---------- Inventory ----------
+// Phase 7: a place to hold stock (Location, since Phase 0) and a way to
+// track it. InventoryItem (current balance) + StockMovement (append-only
+// ledger) mirrors the Order/OrderStatusHistory and ProductionTask/
+// ProductionTaskStageHistory pattern. Neither carries its own businessId —
+// tenant-scoped implicitly through locationId -> Location -> business.
+// materialId points at a Profile/Glass/Accessory row (per materialType) or
+// is the fixed literal "seal" (no catalog entity of its own, same as BOM
+// lines since Phase 5) — no direct FK since it's polymorphic across tables.
+
+enum MaterialType {
+  PROFILE
+  GLASS
+  SEAL
+  ACCESSORY
+}
+
+enum StockMovementType {
+  RECEIVE
+  ADJUSTMENT
+  PRODUCTION_CONSUME
+}
+
+model InventoryItem {
+  id           String       @id @default(cuid())
+  locationId   String
+  materialType MaterialType
+  materialId   String
+  quantity     Float        @default(0)
+  updatedAt    DateTime     @updatedAt
+
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, materialType, materialId])
+  @@index([locationId])
+  @@map("inventory_items")
+}
+
+model StockMovement {
+  id              String            @id @default(cuid())
+  locationId      String
+  materialType    MaterialType
+  materialId      String
+  type            StockMovementType
+  quantityDelta   Float
+  note            String?
+  orderId         String?
+  changedByUserId String?
+  createdAt       DateTime          @default(now())
+
+  location      Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  order         Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  changedByUser User?    @relation(fields: [changedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([locationId])
+  @@map("stock_movements")
 }
 
 // ---------- Audit ----------

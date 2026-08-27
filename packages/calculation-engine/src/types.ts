@@ -12,6 +12,12 @@
 
 export type ProductType = "WINDOW" | "DOOR" | "FORTOCHKA" | "BALCONY";
 
+// Which catalog table (or the fixed "seal" pseudo-material, which has no
+// catalog row of its own) a BOM line's materialId refers to — lets Phase 7's
+// inventory consumption know what it's decrementing without inferring it
+// from unit + string-matching "seal".
+export type MaterialType = "PROFILE" | "GLASS" | "SEAL" | "ACCESSORY";
+
 export interface CatalogProfileInput {
   id: string;
   name: string;
@@ -57,6 +63,7 @@ export interface ProductConfigurationInput {
 
 export interface BomLine {
   materialId: string;
+  materialType: MaterialType;
   label: string;
   quantity: number;
   unit: "M" | "M2" | "PCS";
