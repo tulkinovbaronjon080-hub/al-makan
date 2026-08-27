@@ -50,9 +50,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  memberships        BusinessMember[]
-  refreshTokens      RefreshToken[]
-  orderStatusChanges OrderStatusHistory[]
+  memberships                 BusinessMember[]
+  refreshTokens               RefreshToken[]
+  orderStatusChanges          OrderStatusHistory[]
+  productionTaskStageChanges  ProductionTaskStageHistory[]
 
   @@map("users")
 }
@@ -398,6 +399,8 @@ model OrderItem {
   glass   Glass   @relation(fields: [glassId], references: [id])
   color   Color   @relation(fields: [colorId], references: [id])
 
+  productionTask ProductionTask?
+
   @@index([orderId])
   @@map("order_items")
 }
@@ -418,6 +421,52 @@ model OrderStatusHistory {
 
   @@index([orderId])
   @@map("order_status_history")
+}
+
+// ---------- Production ----------
+// Phase 6: each OrderItem gets its own shop-floor task once the order enters
+// production (see ProductionService.startProduction) — a 3-window order isn't
+// blocked end-to-end on its slowest item. Fixed forward-only stage sequence,
+// enforced in ProductionService, not here. No businessId of its own —
+// tenant-scoped implicitly through orderItem -> order -> business, same as
+// OrderItem/OrderStatusHistory above.
+
+enum ProductionStage {
+  QUEUED
+  CUTTING
+  ASSEMBLY
+  GLAZING
+  QUALITY_CHECK
+  DONE
+}
+
+model ProductionTask {
+  id          String          @id @default(cuid())
+  orderItemId String          @unique
+  stage       ProductionStage @default(QUEUED)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  orderItem    OrderItem                    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  stageHistory ProductionTaskStageHistory[]
+
+  @@map("production_tasks")
+}
+
+// Audit trail per task, mirroring OrderStatusHistory's "domain events get
+// their own history" pattern.
+model ProductionTaskStageHistory {
+  id               String          @id @default(cuid())
+  productionTaskId String
+  stage            ProductionStage
+  changedByUserId  String?
+  createdAt        DateTime        @default(now())
+
+  productionTask ProductionTask @relation(fields: [productionTaskId], references: [id], onDelete: Cascade)
+  changedByUser  User?          @relation(fields: [changedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([productionTaskId])
+  @@map("production_task_stage_history")
 }
 
 // ---------- Audit ----------

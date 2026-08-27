@@ -65,3 +65,23 @@ export function StatusBadge({ status, className }: { status: OrderStatus; classN
     </Badge>
   );
 }
+
+export type ProductionStage = "QUEUED" | "CUTTING" | "ASSEMBLY" | "GLAZING" | "QUALITY_CHECK" | "DONE";
+
+const productionStageVariant: Record<ProductionStage, BadgeProps["variant"]> = {
+  QUEUED: "neutral",
+  CUTTING: "info",
+  ASSEMBLY: "info",
+  GLAZING: "warning",
+  QUALITY_CHECK: "warning",
+  DONE: "success",
+};
+
+export function ProductionStageBadge({ stage, className }: { stage: ProductionStage; className?: string }) {
+  return (
+    <Badge variant={productionStageVariant[stage]} className={className}>
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+      {stage.replace("_", " ")}
+    </Badge>
+  );
+}

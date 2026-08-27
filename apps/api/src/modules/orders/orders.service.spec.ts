@@ -1,4 +1,4 @@
-import { NotFoundException } from "@nestjs/common";
+import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { OrdersService } from "./orders.service";
 import { PrismaService } from "../../prisma/prisma.service";
 
@@ -62,7 +62,7 @@ describe("OrdersService", () => {
     it("rejects an order that doesn't belong to this business", async () => {
       prisma.order.findFirst.mockResolvedValue(null);
 
-      await expect(service.updateStatus("biz-1", "order-x", "user-1", "READY")).rejects.toThrow(
+      await expect(service.updateStatus("biz-1", "order-x", "user-1", "CONFIRMED")).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -70,21 +70,30 @@ describe("OrdersService", () => {
     it("updates the order and appends a status history row", async () => {
       prisma.order.findFirst.mockResolvedValue({ id: "order-1", businessId: "biz-1" });
 
-      const orderUpdate = jest.fn().mockResolvedValue({ id: "order-1", status: "READY" });
+      const orderUpdate = jest.fn().mockResolvedValue({ id: "order-1", status: "CONFIRMED" });
       const historyCreate = jest.fn().mockResolvedValue({});
 
       prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
         fn({ order: { update: orderUpdate }, orderStatusHistory: { create: historyCreate } }),
       );
 
-      await service.updateStatus("biz-1", "order-1", "user-1", "READY", "picked up materials");
+      await service.updateStatus("biz-1", "order-1", "user-1", "CONFIRMED", "picked up materials");
 
       expect(orderUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: "order-1" }, data: { status: "READY" } }),
+        expect.objectContaining({ where: { id: "order-1" }, data: { status: "CONFIRMED" } }),
       );
       expect(historyCreate).toHaveBeenCalledWith({
-        data: { orderId: "order-1", status: "READY", changedByUserId: "user-1", note: "picked up materials" },
+        data: { orderId: "order-1", status: "CONFIRMED", changedByUserId: "user-1", note: "picked up materials" },
       });
+    });
+
+    // PRODUCTION/READY are only reachable via ProductionService (Phase 6) —
+    // this free-form endpoint must not be a backdoor around task completion.
+    it.each(["PRODUCTION", "READY"] as const)("rejects %s as a manual target", async (status) => {
+      await expect(service.updateStatus("biz-1", "order-1", "user-1", status)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(prisma.order.findFirst).not.toHaveBeenCalled();
     });
   });
 });

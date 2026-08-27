@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { productionTaskSchema } from "./production";
 
 /**
  * Mirrors @al-makan/calculation-engine's ProductType/BomLine shapes
@@ -56,5 +57,6 @@ export const orderItemSchema = z.object({
   sellingPrice: z.number(),
   bom: z.array(bomLineSchema),
   createdAt: z.string(),
+  productionTask: productionTaskSchema.pick({ id: true, stage: true }).nullable(),
 });
 export type OrderItemDto = z.infer<typeof orderItemSchema>;

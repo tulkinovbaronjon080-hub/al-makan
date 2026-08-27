@@ -7,13 +7,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ChevronDown, Phone, Plus, Trash2 } from "lucide-react";
 import type { OrderDetailDto, OrderStatus } from "@al-makan/types";
 import { orderStatusSchema } from "@al-makan/types";
-import { Button, Card, EmptyState, Input, StatusBadge, buttonVariants, cn } from "@al-makan/ui";
+import { Button, Card, EmptyState, Input, ProductionStageBadge, StatusBadge, buttonVariants, cn } from "@al-makan/ui";
 import { api, ApiError } from "@/lib/api/client";
+import { useAuth } from "@/lib/auth/auth-context";
 
 export default function OrderDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { permissions } = useAuth();
   const [nextStatus, setNextStatus] = useState<OrderStatus | "">("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +32,14 @@ export default function OrderDetailPage() {
     onSuccess: async () => {
       setNextStatus("");
       setNote("");
+      await queryClient.invalidateQueries({ queryKey });
+      await queryClient.invalidateQueries({ queryKey: ["orders"] });
+    },
+  });
+
+  const startProduction = useMutation({
+    mutationFn: () => api.post(`/production/orders/${params.id}/start`, {}),
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey });
       await queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
@@ -104,6 +114,12 @@ export default function OrderDetailPage() {
         )}
       </Card>
 
+      {order.status === "CONFIRMED" && permissions.includes("orders.edit") && (
+        <Button className="w-full" disabled={startProduction.isPending} onClick={() => startProduction.mutate()}>
+          {startProduction.isPending ? "Starting..." : "Start production"}
+        </Button>
+      )}
+
       <div className="flex items-center justify-between">
         <h2 className="text-[13.5px] font-bold">Products</h2>
         <Link
@@ -131,15 +147,20 @@ export default function OrderDetailPage() {
                   <p className="mt-1 font-mono text-[13px] font-bold text-primary">
                     {item.sellingPrice.toLocaleString()} so&#39;m
                   </p>
+                  {item.productionTask && (
+                    <ProductionStageBadge stage={item.productionTask.stage} className="mt-2" />
+                  )}
                 </div>
-                <button
-                  onClick={() => deleteItem.mutate(item.id)}
-                  aria-label="Remove product"
-                  disabled={deleteItem.isPending}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-danger hover:bg-danger/10"
-                >
-                  <Trash2 className="h-4 w-4" strokeWidth={1.9} />
-                </button>
+                {!item.productionTask && (
+                  <button
+                    onClick={() => deleteItem.mutate(item.id)}
+                    aria-label="Remove product"
+                    disabled={deleteItem.isPending}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-danger hover:bg-danger/10"
+                  >
+                    <Trash2 className="h-4 w-4" strokeWidth={1.9} />
+                  </button>
+                )}
               </div>
             </Card>
           ))}
@@ -156,7 +177,7 @@ export default function OrderDetailPage() {
           >
             <option value="">Select a status…</option>
             {orderStatusSchema.options
-              .filter((s) => s !== order.status)
+              .filter((s) => s !== order.status && s !== "PRODUCTION" && s !== "READY")
               .map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -175,6 +196,9 @@ export default function OrderDetailPage() {
         <Button className="w-full" disabled={!nextStatus || changeStatus.isPending} onClick={submitStatusChange}>
           {changeStatus.isPending ? "Updating..." : "Update status"}
         </Button>
+        <p className="mt-2.5 text-[11px] text-muted-foreground">
+          Production and Ready are set automatically as products move through the shop floor.
+        </p>
       </Card>
 
       <h2 className="text-[13.5px] font-bold">Timeline</h2>

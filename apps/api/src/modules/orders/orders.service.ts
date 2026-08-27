@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type { CreateOrderDto, OrderStatus, PaginationQuery, UpdateOrderDto } from "@al-makan/types";
 import { PrismaService } from "../../prisma/prisma.service";
 
@@ -81,6 +81,7 @@ export class OrdersService {
             profile: { select: catalogRefSelect },
             glass: { select: catalogRefSelect },
             color: { select: catalogRefSelect },
+            productionTask: { select: { id: true, stage: true } },
           },
         },
       },
@@ -105,6 +106,16 @@ export class OrdersService {
   }
 
   async updateStatus(businessId: string, id: string, actorUserId: string, status: OrderStatus, note?: string) {
+    // PRODUCTION and READY are only reachable through ProductionService now
+    // (starting production / every task on an order finishing) — allowing
+    // them here would let someone mark an order READY while its items are
+    // still mid-assembly, silently breaking that guarantee. Every other
+    // transition stays free-form, per the original Phase 2 scope.
+    if (status === "PRODUCTION" || status === "READY") {
+      throw new BadRequestException(
+        "Use POST /production/orders/:orderId/start or complete every production task to reach this status",
+      );
+    }
     await this.assertOrderInBusiness(businessId, id);
 
     return this.prisma.$transaction(async (tx) => {

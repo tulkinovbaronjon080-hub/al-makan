@@ -82,6 +82,7 @@ export class OrderItemsService {
         profile: { select: catalogRefSelect },
         glass: { select: catalogRefSelect },
         color: { select: catalogRefSelect },
+        productionTask: { select: { id: true, stage: true } },
       },
     });
   }
@@ -89,9 +90,19 @@ export class OrderItemsService {
   async remove(businessId: string, orderId: string, itemId: string) {
     await this.orders.assertOrderInBusiness(businessId, orderId);
 
-    const item = await this.prisma.orderItem.findFirst({ where: { id: itemId, orderId } });
+    const item = await this.prisma.orderItem.findFirst({
+      where: { id: itemId, orderId },
+      include: { productionTask: true },
+    });
     if (!item) {
       throw new NotFoundException("Order item not found");
+    }
+    // Deleting would cascade-delete its ProductionTask (and stage history)
+    // — once production has started on an item, removing it here would
+    // silently erase shop-floor progress instead of surfacing a real
+    // decision (e.g. cancelling the order).
+    if (item.productionTask) {
+      throw new BadRequestException("This product is already in production and can't be removed");
     }
 
     await this.prisma.orderItem.delete({ where: { id: itemId } });
