@@ -216,8 +216,9 @@ model Profile {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  business Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  series   ProfileSeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  business   Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  series     ProfileSeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
 
   @@unique([seriesId, name])
   @@index([businessId])
@@ -233,7 +234,8 @@ model Glass {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
 
   @@unique([businessId, name])
   @@index([businessId])
@@ -249,7 +251,8 @@ model Color {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
 
   @@unique([businessId, name])
   @@index([businessId])
@@ -320,11 +323,63 @@ model Order {
   business      Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customer      Customer             @relation(fields: [customerId], references: [id])
   statusHistory OrderStatusHistory[]
+  items         OrderItem[]
 
   @@unique([businessId, orderNumber])
   @@index([businessId])
   @@index([customerId])
   @@map("orders")
+}
+
+enum OpeningDirection {
+  FIXED
+  LEFT_HINGED
+  RIGHT_HINGED
+  TILT_TURN
+}
+
+// Phase 4 (configurator UI) ships this so the configurator has somewhere
+// real to save its output. The cost/BOM fields are a SNAPSHOT of whatever
+// @al-makan/calculation-engine returned at save time — Phase 5 replacing
+// the formula internals must never silently reprice existing items (same
+// principle as Phase 1's token snapshots). No businessId of its own —
+// tenant-scoped implicitly through its parent Order, same as
+// OrderStatusHistory above.
+model OrderItem {
+  id               String           @id @default(cuid())
+  orderId          String
+  productType      String // matches calculation-engine's ProductType union
+  widthMm          Int
+  heightMm         Int
+  sections         Int
+  openingDirection OpeningDirection
+  profileId        String
+  glassId          String
+  colorId          String
+  accessoryIds     Json // string[] of Accessory ids — no join table needed yet
+  quantity         Int              @default(1)
+
+  // Snapshotted calculateProductConfiguration() output:
+  materialCost   Int
+  laborCost      Int
+  additionalCost Int
+  totalCost      Int
+  margin         Int
+  sellingPrice   Int
+  bom            Json // BomLine[] snapshot
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  // No onDelete override — Postgres' default blocks deleting a catalog row
+  // that's in use, reinforcing Phase 3's soft-disable-only policy.
+  profile Profile @relation(fields: [profileId], references: [id])
+  glass   Glass   @relation(fields: [glassId], references: [id])
+  color   Color   @relation(fields: [colorId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
 }
 
 // User-facing status timeline for the Order Detail screen — distinct from

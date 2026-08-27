@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import type { CatalogListQuery, CreateAccessoryDto, UpdateAccessoryDto } from "@al-makan/types";
 import { PrismaService } from "../../prisma/prisma.service";
 
@@ -39,12 +39,24 @@ export class AccessoriesService {
     return this.prisma.accessory.update({ where: { id }, data: dto });
   }
 
-  private async assertExists(businessId: string, id: string) {
+  async assertExists(businessId: string, id: string) {
     const accessory = await this.prisma.accessory.findFirst({ where: { id, businessId } });
     if (!accessory) {
       throw new NotFoundException("Accessory not found");
     }
     return accessory;
+  }
+
+  /** Confirms every id belongs to this business and is active — used when attaching accessories to a new OrderItem. */
+  async assertAllActiveAndInBusiness(businessId: string, ids: string[]) {
+    if (ids.length === 0) return;
+    const found = await this.prisma.accessory.findMany({
+      where: { id: { in: ids }, businessId, isActive: true },
+      select: { id: true },
+    });
+    if (found.length !== new Set(ids).size) {
+      throw new BadRequestException("One or more accessories are invalid or unavailable");
+    }
   }
 
   private async assertNameFree(businessId: string, name: string, excludeId?: string) {

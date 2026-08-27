@@ -22,5 +22,8 @@ import { AccessoriesService } from "./accessories.service";
     AccessoriesController,
   ],
   providers: [BrandsService, ProfileSeriesService, ProfilesService, GlassService, ColorsService, AccessoriesService],
+  // OrdersModule needs these to validate an OrderItem's profile/glass/
+  // color/accessory selections belong to the business before pricing them.
+  exports: [ProfilesService, GlassService, ColorsService, AccessoriesService],
 })
 export class CatalogModule {}

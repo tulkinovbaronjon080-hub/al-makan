@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { paginationQuerySchema } from "./common";
 import { customerSchema } from "./customers";
+import { orderItemSchema } from "./order-items";
 
 // Mirrors the Prisma OrderStatus enum, but defined independently — this
 // package stays DB-agnostic (apps/web depends on it too, with no Prisma
@@ -67,5 +68,6 @@ export type OrderDto = z.infer<typeof orderSchema>;
 export const orderDetailSchema = orderSchema.extend({
   customer: customerSchema,
   statusHistory: z.array(orderStatusHistoryEntrySchema),
+  items: z.array(orderItemSchema),
 });
 export type OrderDetailDto = z.infer<typeof orderDetailSchema>;

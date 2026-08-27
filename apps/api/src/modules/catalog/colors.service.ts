@@ -39,7 +39,7 @@ export class ColorsService {
     return this.prisma.color.update({ where: { id }, data: dto });
   }
 
-  private async assertExists(businessId: string, id: string) {
+  async assertExists(businessId: string, id: string) {
     const color = await this.prisma.color.findFirst({ where: { id, businessId } });
     if (!color) {
       throw new NotFoundException("Color not found");

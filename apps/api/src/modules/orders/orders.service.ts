@@ -3,6 +3,7 @@ import type { CreateOrderDto, OrderStatus, PaginationQuery, UpdateOrderDto } fro
 import { PrismaService } from "../../prisma/prisma.service";
 
 const customerSummarySelect = { id: true, fullName: true, phone: true } as const;
+const catalogRefSelect = { id: true, name: true } as const;
 
 @Injectable()
 export class OrdersService {
@@ -74,6 +75,14 @@ export class OrdersService {
       include: {
         customer: true,
         statusHistory: { orderBy: { createdAt: "asc" } },
+        items: {
+          orderBy: { createdAt: "asc" },
+          include: {
+            profile: { select: catalogRefSelect },
+            glass: { select: catalogRefSelect },
+            color: { select: catalogRefSelect },
+          },
+        },
       },
     });
     if (!order) {
@@ -111,7 +120,7 @@ export class OrdersService {
     });
   }
 
-  private async assertOrderInBusiness(businessId: string, id: string) {
+  async assertOrderInBusiness(businessId: string, id: string) {
     const order = await this.prisma.order.findFirst({ where: { id, businessId } });
     if (!order) {
       throw new NotFoundException("Order not found");

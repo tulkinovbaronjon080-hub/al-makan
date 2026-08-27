@@ -4,10 +4,10 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronDown, Phone } from "lucide-react";
+import { ArrowLeft, ChevronDown, Phone, Plus, Trash2 } from "lucide-react";
 import type { OrderDetailDto, OrderStatus } from "@al-makan/types";
 import { orderStatusSchema } from "@al-makan/types";
-import { Button, Card, EmptyState, Input, StatusBadge, cn } from "@al-makan/ui";
+import { Button, Card, EmptyState, Input, StatusBadge, buttonVariants, cn } from "@al-makan/ui";
 import { api, ApiError } from "@/lib/api/client";
 
 export default function OrderDetailPage() {
@@ -33,6 +33,11 @@ export default function OrderDetailPage() {
       await queryClient.invalidateQueries({ queryKey });
       await queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
+  });
+
+  const deleteItem = useMutation({
+    mutationFn: (itemId: string) => api.delete(`/orders/${params.id}/items/${itemId}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
   async function submitStatusChange() {
@@ -98,6 +103,48 @@ export default function OrderDetailPage() {
           </p>
         )}
       </Card>
+
+      <div className="flex items-center justify-between">
+        <h2 className="text-[13.5px] font-bold">Products</h2>
+        <Link
+          href={`/orders/${order.id}/configure`}
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add product
+        </Link>
+      </div>
+      {order.items.length === 0 ? (
+        <EmptyState title="No products yet" description="Configure a product to add it to this order." />
+      ) : (
+        <div className="space-y-2">
+          {order.items.map((item) => (
+            <Card key={item.id} className="border border-border/70 p-3.5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-bold">
+                    {item.productType} — {item.widthMm}&times;{item.heightMm} mm &middot; {item.sections}s
+                  </p>
+                  <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+                    {item.profile.name} &middot; {item.glass.name} &middot; {item.color.name} &middot; &times;{item.quantity}
+                  </p>
+                  <p className="mt-1 font-mono text-[13px] font-bold text-primary">
+                    {item.sellingPrice.toLocaleString()} so&#39;m
+                  </p>
+                </div>
+                <button
+                  onClick={() => deleteItem.mutate(item.id)}
+                  aria-label="Remove product"
+                  disabled={deleteItem.isPending}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-danger hover:bg-danger/10"
+                >
+                  <Trash2 className="h-4 w-4" strokeWidth={1.9} />
+                </button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <Card className="border border-border/70 p-4">
         <p className="mb-2.5 text-[12px] font-bold">Change status</p>

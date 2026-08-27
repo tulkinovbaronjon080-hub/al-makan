@@ -39,7 +39,7 @@ export class GlassService {
     return this.prisma.glass.update({ where: { id }, data: dto });
   }
 
-  private async assertExists(businessId: string, id: string) {
+  async assertExists(businessId: string, id: string) {
     const glass = await this.prisma.glass.findFirst({ where: { id, businessId } });
     if (!glass) {
       throw new NotFoundException("Glass not found");

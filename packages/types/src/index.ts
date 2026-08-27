@@ -4,5 +4,6 @@ export * from "./business";
 export * from "./users";
 export * from "./rbac";
 export * from "./customers";
+export * from "./order-items";
 export * from "./orders";
 export * from "./catalog";
